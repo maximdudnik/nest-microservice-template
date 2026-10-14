@@ -1,0 +1,17 @@
+/**
+ * `rush deploy --project @org/orders-service` copies the service plus its
+ * production dependency closure into common/deploy (used by the Dockerfile).
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/deploy-scenario.schema.json",
+  "deploymentProjectNames": ["@org/orders-service"],
+  "includeDevDependencies": false,
+  "includeNpmIgnoreFiles": false,
+  "linkCreation": "default",
+  "projectSettings": [
+    {
+      "projectName": "@org/orders-service",
+      "additionalProjectsToInclude": ["@org/contracts"]
+    }
+  ]
+}

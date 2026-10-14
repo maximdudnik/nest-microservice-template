@@ -1,0 +1,64 @@
+# Local development stack. `docker compose up -d postgres rabbitmq` then `rushx start:dev`,
+# or `docker compose --profile app up --build` to run the service container too.
+name: orders-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: orders
+      POSTGRES_PASSWORD: orders
+      POSTGRES_DB: orders
+    ports: ['5432:5432']
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U orders -d orders']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports: ['5672:5672', '15672:15672'] # UI: http://localhost:15672 (guest/guest)
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', '-q', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Stub for the third-party risk provider (always ALLOW). Replace with WireMock/Prism if needed.
+  risk-api-stub:
+    image: node:24-slim
+    command:
+      - node
+      - -e
+      - "require('http').createServer((q,s)=>{s.setHeader('content-type','application/json');s.end(JSON.stringify({assessment_id:'stub',verdict:'ALLOW'}))}).listen(4010)"
+    ports: ['4010:4010']
+
+  orders-migrate:
+    build: { context: ., dockerfile: apps/orders-service/Dockerfile }
+    command: ['node', 'dist/migrate.js']
+    environment:
+      DATABASE_URL: postgres://orders:orders@postgres:5432/orders
+    depends_on:
+      postgres: { condition: service_healthy }
+    profiles: [app]
+
+  orders-service:
+    build: { context: ., dockerfile: apps/orders-service/Dockerfile }
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://orders:orders@postgres:5432/orders
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672
+      RISK_API_URL: http://risk-api-stub:4010
+      RISK_API_KEY: local-dev
+    ports: ['3000:3000']
+    depends_on:
+      orders-migrate: { condition: service_completed_successfully }
+      rabbitmq: { condition: service_healthy }
+      risk-api-stub: { condition: service_started }
+    profiles: [app]
+
+volumes:
+  pgdata:

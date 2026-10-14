@@ -1,0 +1,10 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/pnpm-config.schema.json",
+  "useWorkspaces": true,
+  "strictPeerDependencies": false,
+  "autoInstallPeers": false,
+  "resolutionMode": "highest",
+  "globalOverrides": {
+    "fastify": "^5.12.2"
+  }
+}

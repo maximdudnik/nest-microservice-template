@@ -1,0 +1,53 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
+  "commands": [
+    {
+      "commandKind": "bulk",
+      "name": "lint",
+      "summary": "Run ESLint in every project",
+      "enableParallelism": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "test",
+      "summary": "Run unit tests in every project",
+      "enableParallelism": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "test:cov",
+      "summary": "Run unit tests with coverage thresholds (CI gate)",
+      "enableParallelism": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "format:check",
+      "summary": "Prettier check in every project",
+      "enableParallelism": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "db:check",
+      "summary": "drizzle-kit check (migration consistency)",
+      "enableParallelism": true,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    },
+    {
+      "commandKind": "bulk",
+      "name": "test:integration",
+      "summary": "Run Testcontainers integration tests (needs Docker)",
+      "enableParallelism": false,
+      "ignoreMissingScript": true,
+      "allowWarningsInSuccessfulBuild": true
+    }
+  ]
+}

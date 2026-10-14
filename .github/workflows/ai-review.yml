@@ -1,0 +1,46 @@
+name: AI review
+
+# Provider-agnostic placeholder. Does nothing unless enabled:
+#   1. Repo variable  AI_REVIEW_ENABLED = true   (Settings > Secrets and variables > Actions > Variables)
+#   2. Repo secret    AI_REVIEW_API_KEY          (key for whichever provider you pick)
+# Then replace the "Run AI review" step with your chosen action (see README > "AI code review").
+# If you choose CodeRabbit (a GitHub App), you don't need this workflow at all: install the app
+# and commit a .coderabbit.yaml instead.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-review:
+    if: vars.AI_REVIEW_ENABLED == 'true' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AI_REVIEW_API_KEY: ${{ secrets.AI_REVIEW_API_KEY }}
+    steps:
+      - name: Check for API key
+        id: key
+        run: |
+          if [ -z "$AI_REVIEW_API_KEY" ]; then
+            echo "::notice::AI_REVIEW_API_KEY is not set (or PR is from a fork); skipping AI review."
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.key.outputs.present == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Run AI review
+        if: steps.key.outputs.present == 'true'
+        run: |
+          echo "AI reviewer not configured yet. Replace this step with your chosen action, e.g. an"
+          echo "OpenAI- or Anthropic-based PR review action, passing \${{ secrets.AI_REVIEW_API_KEY }}."
+          echo "Point it at docs: nodejs standards + README so it reviews against team rules."

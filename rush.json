@@ -1,0 +1,37 @@
+/**
+ * Rush monorepo configuration.
+ * Docs: https://rushjs.io/pages/configs/rush_json/
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+  "rushVersion": "5.181.0",
+  "pnpmVersion": "10.34.7",
+  "nodeSupportedVersionRange": ">=24.0.0 <25.0.0",
+  "nodeSupportedVersionInstructions": "Use the version in .nvmrc (nvm use).",
+  "suppressNodeLtsWarning": false,
+  "projectFolderMinDepth": 2,
+  "projectFolderMaxDepth": 2,
+  "gitPolicy": {},
+  "repository": {
+    "url": "https://github.com/your-org/backend-monorepo",
+    "defaultBranch": "main"
+  },
+  "eventHooks": {
+    "preRushInstall": [],
+    "postRushInstall": [],
+    "preRushBuild": [],
+    "postRushBuild": []
+  },
+  "projects": [
+    {
+      "packageName": "@org/contracts",
+      "projectFolder": "libs/contracts",
+      "tags": ["type/lib-contracts"]
+    },
+    {
+      "packageName": "@org/orders-service",
+      "projectFolder": "apps/orders-service",
+      "tags": ["type/service", "bc/orders"]
+    }
+  ]
+}

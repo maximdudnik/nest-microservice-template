@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  RUSH: node common/scripts/install-run-rush.js
+  # On PRs only build/test what the change impacts; on main build everything.
+  RUSH_SELECTION: ${{ github.event_name == 'pull_request' && '--impacted-by git:origin/main' || '' }}
+
+jobs:
+  verify:
+    name: Build, lint, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # needed for --impacted-by git:origin/main
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Cache Rush / pnpm store
+        uses: actions/cache@v4
+        with:
+          path: |
+            common/temp/install-run
+            common/temp/pnpm-store
+            ~/.rush
+          key: rush-${{ runner.os }}-${{ hashFiles('common/config/rush/pnpm-lock.yaml', 'rush.json') }}
+          restore-keys: rush-${{ runner.os }}-
+
+      - name: Verify change files / lockfile consistency
+        run: $RUSH install --bypass-policy
+
+      - name: Project tag rules
+        run: node common/scripts/check-tags.mjs
+
+      - name: Build
+        run: $RUSH build --verbose $RUSH_SELECTION
+
+      - name: Format check
+        run: $RUSH format:check $RUSH_SELECTION
+
+      - name: Lint (ESLint + eslint-plugin-boundaries + dependency-cruiser)
+        run: $RUSH lint $RUSH_SELECTION
+
+      - name: Unit tests with coverage gate
+        run: $RUSH test:cov $RUSH_SELECTION
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: apps/*/coverage
+          if-no-files-found: ignore
+
+  migrations:
+    name: Drizzle schema / migration drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: $RUSH install
+      - name: drizzle-kit check
+        run: $RUSH db:check
+      - name: Generate must produce no diff (schema and committed SQL are in sync)
+        run: |
+          for app in apps/*/; do
+            if [ -f "$app/drizzle.config.ts" ]; then
+              (cd "$app" && node ../../common/scripts/install-run-rushx.js db:generate)
+            fi
+          done
+          git status --porcelain -- 'apps/*/drizzle'
+          if [ -n "$(git status --porcelain -- 'apps/*/drizzle')" ]; then
+            echo "::error::Schema changed without a committed migration. Run 'rushx db:generate' and commit the SQL."
+            exit 1
+          fi
+
+  integration:
+    name: Integration tests (Testcontainers)
+    runs-on: ubuntu-latest # Docker is available on GitHub-hosted runners
+    timeout-minutes: 30
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - run: $RUSH install
+      - run: $RUSH build $RUSH_SELECTION
+      - name: Integration tests (Postgres via Testcontainers)
+        run: $RUSH test:integration $RUSH_SELECTION
+
+  docker:
+    name: Docker build + Trivy scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: verify
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/orders-service/Dockerfile
+          push: false
+          load: true
+          tags: orders-service:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Trivy image scan (fail on HIGH/CRITICAL with a fix)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: orders-service:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: sarif
+          output: trivy.sarif
+      - name: Upload Trivy SARIF
+        if: always() && hashFiles('trivy.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy

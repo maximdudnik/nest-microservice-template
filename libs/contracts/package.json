@@ -1,0 +1,20 @@
+{
+  "name": "@org/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "RabbitMQ message contracts (zod schemas, exchanges, routing keys) shared between services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "lint": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "~5.9.3"
+  }
+}
