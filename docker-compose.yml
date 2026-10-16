@@ -37,7 +37,7 @@ services:
 
   orders-migrate:
     build: { context: ., dockerfile: apps/orders-service/Dockerfile }
-    command: ['node', 'dist/migrate.js']
+    command: ['dist/migrate.js'] # image entrypoint is node (distroless)
     environment:
       DATABASE_URL: postgres://orders:orders@postgres:5432/orders
     depends_on:

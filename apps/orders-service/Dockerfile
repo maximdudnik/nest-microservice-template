@@ -2,13 +2,13 @@
 # Build from the REPO ROOT:  docker build -f apps/orders-service/Dockerfile -t orders-service .
 
 ARG NODE_VERSION=24
-ARG RUSH_VERSION=5.181.0
+ARG RUSHJS_VERSION=5.181.0
 
 # ---------- build: install, compile, and produce a pruned deployment with `rush deploy` ----------
 FROM node:${NODE_VERSION}-slim AS build
-ARG RUSH_VERSION
+ARG RUSHJS_VERSION
 WORKDIR /repo
-RUN npm install -g @microsoft/rush@${RUSH_VERSION}
+RUN npm install -g @microsoft/rush@${RUSHJS_VERSION}
 COPY . .
 RUN --mount=type=cache,target=/root/.rush \
     --mount=type=cache,target=/repo/common/temp/pnpm-store \
@@ -16,16 +16,17 @@ RUN --mount=type=cache,target=/root/.rush \
  && rush build --to @org/orders-service \
  && rush deploy --project @org/orders-service --overwrite
 
-# ---------- runtime: minimal, non-root, production deps only ----------
-FROM node:${NODE_VERSION}-slim AS runtime
+# ---------- runtime: distroless (no shell, no npm, no package manager), non-root ----------
+# node:*-slim ships npm and perl, which carry HIGH CVEs we don't need at runtime.
+FROM gcr.io/distroless/nodejs${NODE_VERSION}-debian13:nonroot AS runtime
 ENV NODE_ENV=production \
     NODE_OPTIONS="--enable-source-maps"
 WORKDIR /app
-COPY --from=build --chown=node:node /repo/common/deploy/ /app/
+COPY --from=build --chown=nonroot:nonroot /repo/common/deploy/ /app/
 WORKDIR /app/apps/orders-service
-USER node
+USER nonroot
 EXPOSE 3000
-# Readiness/liveness are probed by the orchestrator via /health/ready and /health/live.
 STOPSIGNAL SIGTERM
-CMD ["node", "--require", "./dist/instrumentation.js", "dist/main.js"]
-# Migrations run as a separate job with the same image:  docker run ... node dist/migrate.js
+# Image ENTRYPOINT is `node`; readiness/liveness via /health/ready and /health/live.
+CMD ["--require", "./dist/instrumentation.js", "dist/main.js"]
+# Migrations run as a separate job with the same image:  docker run ... dist/migrate.js
