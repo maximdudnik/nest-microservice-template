@@ -32,7 +32,7 @@ jobs:
           node-version-file: .nvmrc
 
       - name: Cache Rush / pnpm store
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             common/temp/install-run
@@ -61,7 +61,7 @@ jobs:
 
       - name: Upload coverage
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: apps/*/coverage
@@ -131,7 +131,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
       - name: Trivy image scan (fail on HIGH/CRITICAL with a fix)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: orders-service:ci
           severity: HIGH,CRITICAL
