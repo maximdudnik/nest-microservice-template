@@ -15,7 +15,7 @@ concurrency:
 env:
   RUSH: node common/scripts/install-run-rush.js
   # On PRs only build/test what the change impacts; on main build everything.
-  RUSH_SELECTION: ${{ github.event_name == 'pull_request' && '--impacted-by git:origin/main' || '' }}
+  BUILD_SELECTION: ${{ github.event_name == 'pull_request' && '--impacted-by git:origin/main' || '' }}
 
 jobs:
   verify:
@@ -48,16 +48,16 @@ jobs:
         run: node common/scripts/check-tags.mjs
 
       - name: Build
-        run: $RUSH build --verbose $RUSH_SELECTION
+        run: $RUSH build --verbose $BUILD_SELECTION
 
       - name: Format check
-        run: $RUSH format:check $RUSH_SELECTION
+        run: $RUSH format:check $BUILD_SELECTION
 
       - name: Lint (ESLint + eslint-plugin-boundaries + dependency-cruiser)
-        run: $RUSH lint $RUSH_SELECTION
+        run: $RUSH lint $BUILD_SELECTION
 
       - name: Unit tests with coverage gate
-        run: $RUSH test:cov $RUSH_SELECTION
+        run: $RUSH test:cov $BUILD_SELECTION
 
       - name: Upload coverage
         if: always()
@@ -105,9 +105,9 @@ jobs:
         with:
           node-version-file: .nvmrc
       - run: $RUSH install
-      - run: $RUSH build $RUSH_SELECTION
+      - run: $RUSH build $BUILD_SELECTION
       - name: Integration tests (Postgres via Testcontainers)
-        run: $RUSH test:integration $RUSH_SELECTION
+        run: $RUSH test:integration $BUILD_SELECTION
 
   docker:
     name: Docker build + Trivy scan
